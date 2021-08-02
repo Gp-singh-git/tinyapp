@@ -16,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/Gp-singh-git/tinyapp/issues"
   },
-  "homepage": "https://github.com/Gp-singh-git/tinyapp#readme"
+  "homepage": "https://github.com/Gp-singh-git/tinyapp#readme",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
 }
