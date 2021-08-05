@@ -6,8 +6,10 @@ const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
 const cookieParser = require('cookie-parser');
 app.use(cookieParser());
+app.set("view engine", "ejs");
 
-function generateRandomString() {
+
+const generateRandomString = function() {
 
   const randomString = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678912";
   let myString="";
@@ -15,13 +17,35 @@ function generateRandomString() {
       myString = myString + randomString[Math.floor(Math.random()*62)];
     }
     return myString;
+};
+
+const emailFind = function (email) {
+  for( let id in users) {
+    if(users[id]["email"] === email) {
+      return true;
+    }
+  }
+  return false;
 }
 
-app.set("view engine", "ejs");
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  "9sm5xK": "http://www.google.com",
+  "a5b3c2": "http://www.example.com"
 };
+
+const users = { 
+  "u1aaBB": {
+    id: "u1aaBB", 
+    email: "user1@gmail.com", 
+    password: "p12345"
+  },
+ "u2ggRR": {
+    id: "u2ggRR", 
+    email: "user2@gmail.com", 
+    password: "p67890"
+  }
+}
 
 app.get("/", (req, res) => {
   res.send("Hello!");
@@ -36,20 +60,17 @@ app.get("/hello", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  
   const templateVars = { 
-    
-    username: req.cookies["username"],        //setting username to cookie
+    user: users[req.cookies["user_id"]],
     urls: urlDatabase
   };
-  res.render("urls_index", templateVars);
+    res.render("urls_index", templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
   const templateVars = { 
-    
-    username: req.cookies["username"], 
-  }
+    user: users[req.cookies["user_id"]],
+  };
   res.render("urls_new", templateVars);
 });
 
@@ -68,7 +89,7 @@ app.get("/u/:shortURL", (req, res) => {
 
 app.get("/urls/:shortURL", (req, res) => {
   const templateVars = { 
-    username: req.cookies["username"],                                        
+    user: users[req.cookies["user_id"]],
     shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL] 
   };
 
@@ -97,6 +118,39 @@ app.post("/logout", (req, res) => {
   res.redirect('/urls');
 
 });
+
+app.get("/register", (req, res) => {
+  const templateVars = { 
+    user:"",
+  };
+  res.render('urls_register', templateVars);
+});
+
+app.post("/register", (req, res) => {
+  const inputEmail = req.body.email;
+  const inputPassword = req.body.password;
+  if(!inputEmail || !inputPassword) {
+    res.status(400).send("Empty Input. Please fill both fields.");
+  }
+
+  if(!emailFind(inputEmail)) {
+    const userId = generateRandomString();
+    users[userId] = {
+    id: userId,
+    email: inputEmail,
+    password: inputPassword
+    }
+    res.cookie('user_id', userId);
+    console.log(users);
+    res.redirect('urls');
+    } 
+  
+    res.status(400).send("Email already in use");
+    // res.redirect('/register');
+  
+  
+});
+
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
