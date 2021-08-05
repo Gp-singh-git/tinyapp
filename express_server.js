@@ -4,8 +4,8 @@ const PORT = 8080; // default port 8080
 
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
-const cookieParser = require('cookie-parser')
-app.use(cookieParser())
+const cookieParser = require('cookie-parser');
+app.use(cookieParser());
 
 function generateRandomString() {
 
@@ -40,8 +40,8 @@ app.get("/urls", (req, res) => {
   const templateVars = { 
     
     username: req.cookies["username"],        //setting username to cookie
-    urls: urlDatabase};
-    console.log(templateVars);
+    urls: urlDatabase
+  };
   res.render("urls_index", templateVars);
 });
 
@@ -69,8 +69,9 @@ app.get("/u/:shortURL", (req, res) => {
 app.get("/urls/:shortURL", (req, res) => {
   const templateVars = { 
     username: req.cookies["username"],                                        
-    shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL] };
-  console.log(templateVars);
+    shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL] 
+  };
+
   res.render("urls_show", templateVars);
 });
 
@@ -87,12 +88,8 @@ app.post("/urls/:id", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  console.log(req.body.username);
-  console.log(req.cookies);
   res.cookie('username',req.body.username);
-  console.log(req.cookies);
   res.redirect('/urls');
-
 });
 
 app.post("/logout", (req, res) => {
