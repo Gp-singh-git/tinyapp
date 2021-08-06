@@ -1,7 +1,7 @@
 const express = require("express");
 const app = express();
 const PORT = 8080; // default port 8080
-
+const bcrypt = require('bcrypt');
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
 const cookieParser = require('cookie-parser');
@@ -75,6 +75,7 @@ app.get("/urls", (req, res) => {
 
 if(!req.cookies["user_id"]) {
   res.redirect("/urls/error");
+  return;
 }
 
   const templateVars = { 
@@ -113,25 +114,26 @@ app.post("/urls", (req, res) => {
   urlDatabase[myShortURL]["userID"] = req.cookies["user_id"];
 
   res.redirect(`/urls/${myShortURL}`);          
-  }
+  } else {
 
   res.redirect("/login");
-
+  }
 });
 
 app.get("/u/:shortURL", (req, res) => {
   if(urlDatabase[req.params.shortURL]) {
    const longURL = urlDatabase[req.params.shortURL]["longURL"];
   res.redirect(longURL);
-  }
+  } else {
   res.status(400).send("Invalid shortened URL entered");
-
+  }
 });
 
 app.get("/urls/:shortURL", (req, res) => {
 
   if(!req.cookies["user_id"]) {
     res.redirect("/urls/error");
+    return;
   }
   if(urlDatabase[req.params.shortURL]["userID"] === req.cookies["user_id"] ) {
   const templateVars = { 
@@ -140,13 +142,13 @@ app.get("/urls/:shortURL", (req, res) => {
   };
 
   res.render("urls_show", templateVars);
-}
+} else {
   const templateVars = { 
   email: req.cookies["user_id"] ? users[req.cookies["user_id"]]["email"] : "",
   msg: "This URL does not belong to you. Please try again"
   };
   res.render("urls_err", templateVars);
-
+}
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
@@ -154,26 +156,27 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   const deleteIt = req.params.shortURL;
   delete urlDatabase[deleteIt];
   res.redirect('/urls');
-  }
+  } else {
   const templateVars = { 
     email: req.cookies["user_id"] ? users[req.cookies["user_id"]]["email"] : "",
     msg: "This URL does not belong to you. Please try again"
     };
     res.render("urls_err", templateVars);
+  }
 })
 
 app.post("/urls/:id", (req, res) => {
 
-  if(urlDatabase[req.params.shortURL]["userID"] === req.cookies["user_id"] ) {
+  if(urlDatabase[req.params.id]["userID"] === req.cookies["user_id"] ) {
     urlDatabase[req.params.id]["longURL"] = req.body.newLongUrl;
     res.redirect('/urls');
-  }
+  } else {
   const templateVars = { 
     email: req.cookies["user_id"] ? users[req.cookies["user_id"]]["email"] : "",
     msg: "This URL does not belong to you. Please try again"
     };
     res.render("urls_err", templateVars);
-
+  }
 });
 
 app.get("/login", (req, res) => {
@@ -188,23 +191,25 @@ app.post("/login", (req, res) => {
   const inputPassword = req.body.password;
   if(!inputEmail || !inputPassword) {
     res.status(400).send("Empty Input. Please fill both fields.");
+    return;
   }
   
   if(emailFind(inputEmail)) {
     const ourUser = idfinder(inputEmail);
-    console.log(ourUser);
-    if(inputPassword === ourUser.password) {
+    // if(inputPassword === ourUser.password) {
+      if(bcrypt.compareSync(inputPassword, ourUser.password)) {
      res.cookie('user_id', ourUser.id);
      res.redirect('urls');
   } else {
       res.status(403).send("Wrong password");
   }
-  }
+  } else {
     res.status(403).send("Cannot find user.");
+  }
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie('user_id');
+  res.cookie('user_id', "");
   res.redirect('/urls');
 
 });
@@ -213,7 +218,7 @@ app.get("/register", (req, res) => {
   const templateVars = { 
     email : ""
   };
-  res.clearCookie('user_id');
+  res.cookie('user_id', "");
   res.render('urls_register', templateVars);
 });
 
@@ -222,20 +227,23 @@ app.post("/register", (req, res) => {
   const inputPassword = req.body.password;
   if(!inputEmail || !inputPassword) {
     res.status(400).send("Empty Input. Please fill both fields.");
+    return;
   }
 
   if(!emailFind(inputEmail)) {
     const userId = generateRandomString();
+    const salt = bcrypt.genSaltSync(10);
     users[userId] = {
     id: userId,
     email: inputEmail,
-    password: inputPassword
+    // password: inputPassword
+    password: bcrypt.hashSync(inputPassword,salt)
     }
     res.cookie('user_id', userId);
     res.redirect('urls');
-  }
+  } else {
     res.status(400).send("Email already in use");
-  
+  }
   
 });
 
