@@ -8,6 +8,29 @@ const cookieParser = require('cookie-parser');
 app.use(cookieParser());
 app.set("view engine", "ejs");
 
+const urlDatabase = {
+  b6UTxQ: {
+      longURL: "https://www.tsn.ca",
+      userID: "u1aaBB"
+  },
+  i3BoGr: {
+      longURL: "https://www.google.ca",
+      userID: "u2ggRR"
+  }
+};
+
+const users = { 
+  "u1aaBB": {
+    id: "u1aaBB", 
+    email: "user1@gmail.com", 
+    password: "p12345"
+  },
+ "u2ggRR": {
+    id: "u2ggRR", 
+    email: "user2@gmail.com", 
+    password: "p67890"
+  }
+}
 
 const generateRandomString = function() {
 
@@ -36,73 +59,120 @@ const idfinder = function (email) {
   }
 }
 
-const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com",
-  "a5b3c2": "http://www.example.com"
-};
 
-const users = { 
-  "u1aaBB": {
-    id: "u1aaBB", 
-    email: "user1@gmail.com", 
-    password: "p12345"
-  },
- "u2ggRR": {
-    id: "u2ggRR", 
-    email: "user2@gmail.com", 
-    password: "p67890"
+const urlsForUser = function(user) {
+  let selectedURL = {};
+  for ( let entry in urlDatabase) {
+    if(urlDatabase[entry]["userID"] === user) {
+      selectedURL[entry] = urlDatabase[entry]["longURL"];
+    }
   }
+  console.log(selectedURL);
+  return selectedURL;
 }
-
 
 app.get("/urls", (req, res) => {
 
+if(!req.cookies["user_id"]) {
+  res.redirect("/urls/error");
+}
+
   const templateVars = { 
     email: req.cookies["user_id"] ? users[req.cookies["user_id"]]["email"] : "",
-    urls: urlDatabase
+    urls: urlsForUser(req.cookies["user_id"])
   };
+
     res.render("urls_index", templateVars);
 });
+
+app.get("/urls/error", (req, res) => {
+  const templateVars = { 
+    email: req.cookies["user_id"] ? users[req.cookies["user_id"]]["email"] : "",
+    msg: "Please Login to see URL details"
+  };
+  res.render("urls_err", templateVars);
+});
+
 
 app.get("/urls/new", (req, res) => {
   const templateVars = { 
     email: req.cookies["user_id"] ? users[req.cookies["user_id"]]["email"] : "",
   };
-  res.render("urls_new", templateVars);
+    res.render("urls_new", templateVars);
+
 });
 
 app.post("/urls", (req, res) => {
-  
+
+  if(req.cookies["user_id"]) {
+
   const myLongUrl = req.body.longURL;
   const myShortURL = generateRandomString();
-  urlDatabase[myShortURL] = myLongUrl;
-  res.redirect(`/urls/${myShortURL}`);         // Respond with 'Ok' (we will replace this)
+  urlDatabase[myShortURL] = {};
+  urlDatabase[myShortURL]["longURL"] = myLongUrl;
+  urlDatabase[myShortURL]["userID"] = req.cookies["user_id"];
+
+  res.redirect(`/urls/${myShortURL}`);          
+  }
+
+  res.redirect("/login");
+
 });
 
 app.get("/u/:shortURL", (req, res) => {
-   const longURL = urlDatabase[req.params.shortURL];
+  if(urlDatabase[req.params.shortURL]) {
+   const longURL = urlDatabase[req.params.shortURL]["longURL"];
   res.redirect(longURL);
+  }
+  res.status(400).send("Invalid shortened URL entered");
+
 });
 
 app.get("/urls/:shortURL", (req, res) => {
+
+  if(!req.cookies["user_id"]) {
+    res.redirect("/urls/error");
+  }
+  if(urlDatabase[req.params.shortURL]["userID"] === req.cookies["user_id"] ) {
   const templateVars = { 
     email: req.cookies["user_id"] ? users[req.cookies["user_id"]]["email"] : "",
-    shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL] 
+    shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL]["longURL"] 
   };
 
   res.render("urls_show", templateVars);
+}
+  const templateVars = { 
+  email: req.cookies["user_id"] ? users[req.cookies["user_id"]]["email"] : "",
+  msg: "This URL does not belong to you. Please try again"
+  };
+  res.render("urls_err", templateVars);
+
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
+  if(urlDatabase[req.params.shortURL]["userID"] === req.cookies["user_id"] ) {
   const deleteIt = req.params.shortURL;
   delete urlDatabase[deleteIt];
   res.redirect('/urls');
+  }
+  const templateVars = { 
+    email: req.cookies["user_id"] ? users[req.cookies["user_id"]]["email"] : "",
+    msg: "This URL does not belong to you. Please try again"
+    };
+    res.render("urls_err", templateVars);
 })
 
 app.post("/urls/:id", (req, res) => {
-  urlDatabase[req.params.id] = req.body.newLongUrl;
-  res.redirect('/urls');
+
+  if(urlDatabase[req.params.shortURL]["userID"] === req.cookies["user_id"] ) {
+    urlDatabase[req.params.id]["longURL"] = req.body.newLongUrl;
+    res.redirect('/urls');
+  }
+  const templateVars = { 
+    email: req.cookies["user_id"] ? users[req.cookies["user_id"]]["email"] : "",
+    msg: "This URL does not belong to you. Please try again"
+    };
+    res.render("urls_err", templateVars);
 
 });
 
