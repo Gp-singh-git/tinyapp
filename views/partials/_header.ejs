@@ -15,16 +15,17 @@
 
     <% if(email) { %>
       <form method="POST" action="/logout">
-        <label>Logged in as: <%= email %> &nbsp</label>
-        <button type=submit value = "Logout">Logout</button>
+        <label style = color:aqua><b>Logged in as: <%= email %> &nbsp</b></label>
+        <button type=submit value = "Logout" style = "background-color:#625f92; border: 2px solid #9b370f; font-weight: bold" >Logout</button>
       </form>
     <%} else {%>
 
       <form method="GET" action="/login">
-        <button type=submit value = "login">Login</button>
+        <button type=submit value = "login" style = "background-color:#c77a47; border: 2px solid #9b370f; font-weight: bold">Login</button>
       </form>
+      <span style="display:inline-block; width: 20px;"></span>
       <form method="GET" action="/register">
-        <button type=submit value = "Register">Register</button>
+        <button type=submit value = "Register" style = "background-color:#a76e94; border: 2px solid #9b370f ; font-weight: bold">Register</button>
         </form>
     <%}%>
 

@@ -20,6 +20,10 @@ const urlDatabase = {                             // Database containing URL wit
   i3BoGr: {
     longURL: "https://www.google.ca",
     userID: "u2ggRR"
+  },
+  Abcd34: {
+    longURL: "https://www.lighthouselabs.ca",
+    userID: "u1aaBB"
   }
 };
 
@@ -35,6 +39,16 @@ const users = {                                   //User Database
     password: '$2b$10$36g8lRU8D0gTTAZ9QcCqM.lJ8E6X1dAJbuJ2t9mXLkzRrgPpzjOIy'
   }
 };
+
+app.get("/", (req, res) => {
+  if (!req.session.user_id) {
+    res.redirect("/login");
+  } else {
+    res.redirect("urls");
+  }
+});
+
+
 
 app.get("/urls", (req, res) => {
 
@@ -64,14 +78,15 @@ app.get("/urls/new", (req, res) => {
   const templateVars = {
     email: req.session.user_id ? users[req.session.user_id]["email"] : "",
   };
-  res.render("urls_new", templateVars);
-
+  if(templateVars.email) {
+    res.render("urls_new", templateVars);
+  } else {
+    res.redirect("/login");
+  }
 });
 
 app.post("/urls", (req, res) => {
-
-  if (req.session.user_id) {
-
+  if(req.session.user_id) {
     const myLongUrl = req.body.longURL;
     const myShortURL = generateRandomString();
     urlDatabase[myShortURL] = {};
@@ -80,8 +95,12 @@ app.post("/urls", (req, res) => {
 
     res.redirect(`/urls/${myShortURL}`);
   } else {
+      const templateVars = {
+      email: "",
+      msg: "Please Login to proceed."
+    };
+    res.render("urls_err", templateVars);
 
-    res.redirect("/login");
   }
 });
 
@@ -90,7 +109,11 @@ app.get("/u/:shortURL", (req, res) => {
     const longURL = urlDatabase[req.params.shortURL]["longURL"];
     res.redirect(longURL);
   } else {
-    res.status(400).send("Invalid shortened URL entered");
+      const templateVars = {
+      email: req.session.user_id ? users[req.session.user_id]["email"] : "",
+      msg: "Invalid shortURL entered. Please try again"
+    };
+    res.render("urls_err", templateVars);
   }
 });
 
@@ -100,6 +123,15 @@ app.get("/urls/:shortURL", (req, res) => {
     res.redirect("/urls/error");
     return;
   }
+  if(!urlDatabase[req.params.shortURL]) {
+    const templateVars = {
+      email: users[req.session.user_id]["email"],
+      msg: "Invalid shortURL entered. Please try again"
+    };
+    res.render("urls_err", templateVars);
+    return;
+  }
+
   if (urlDatabase[req.params.shortURL]["userID"] === req.session.user_id) {
     const templateVars = {
       email: req.session.user_id ? users[req.session.user_id]["email"] : "",
@@ -117,62 +149,87 @@ app.get("/urls/:shortURL", (req, res) => {
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
-  const userid1 = req.session && req.session.user_id;
-  if (urlDatabase[req.params.shortURL]["userID"] === userid1) {
+  if(req.session.user_id) {
+  if (urlDatabase[req.params.shortURL]["userID"] === req.session.user_id) {
     const deleteIt = req.params.shortURL;
-
     delete urlDatabase[deleteIt];
     res.redirect('/urls');
   } else {
     const templateVars = {
-      email: req.session.user_id ? users[req.session.user_id]["email"] : "",
+      email: users[req.session.user_id]["email"],
       msg: "This URL does not belong to you. Please try again"
     };
     res.render("urls_err", templateVars);
   }
+} else {
+  const templateVars = {
+    email: "",
+    msg: "Please login to proceed"
+  };
+  res.render("urls_err", templateVars);
+
+}
 });
 
 app.post("/urls/:id", (req, res) => {
 
-  if (urlDatabase[req.params.id]["userID"] === req.session.user_id) {
-    urlDatabase[req.params.id]["longURL"] = req.body.newLongUrl;
-    res.redirect('/urls');
+  if(req.session.user_id) {
+    if (urlDatabase[req.params.id]["userID"] === req.session.user_id) {
+      urlDatabase[req.params.id]["longURL"] = req.body.newLongUrl;
+      res.redirect('/urls');
+    } else {
+      const templateVars = {
+        email: req.session.user_id ? users[req.session.user_id]["email"] : "",
+        msg: "This URL does not belong to you. Please try again"
+      };
+      res.render("urls_err", templateVars);
+    }
   } else {
     const templateVars = {
-      email: req.session.user_id ? users[req.session.user_id]["email"] : "",
-      msg: "This URL does not belong to you. Please try again"
+      email: "",
+      msg: "Please Login to proceed"
     };
     res.render("urls_err", templateVars);
   }
 });
 
 app.get("/login", (req, res) => {
+  if(req.session.user_id) {
+    res.redirect("/urls");
+  } else {
   const templateVars = {
     email:""
   };
   res.render('urls_login', templateVars);
+  }
 });
 
 app.post("/login", (req, res) => {
   const inputEmail = req.body.email;
   const inputPassword = req.body.password;
+  const templateVars = {
+    email: "",
+    msg: ""
+  };
+  
   if (!inputEmail || !inputPassword) {
-    res.status(400).send("Empty Input. Please fill both fields.");
+    templateVars.msg = "Empty Input. Please fill both fields.";
+    res.render("urls_err", templateVars);
     return;
   }
   
   if (emailFind(inputEmail, users)) {
     const ourUser = getUserByEmail(inputEmail, users);
-    // if(inputPassword === ourUser.password) {
     if (bcrypt.compareSync(inputPassword, ourUser.password)) {
       req.session.user_id = ourUser.id;
-      //  res.cookie('user_id', ourUser.id);
       res.redirect('urls');
     } else {
-      res.status(403).send("Wrong password");
+      templateVars.msg = "Wrong Password Entered";
+      res.render("urls_err", templateVars);
     }
   } else {
-    res.status(403).send("Cannot find user.");
+    templateVars.msg = "Cannot find user";
+    res.render("urls_err", templateVars);
   }
 });
 
@@ -183,18 +240,26 @@ app.post("/logout", (req, res) => {
 });
 
 app.get("/register", (req, res) => {
+  if(req.session.user_id) {
+    res.redirect("/urls");
+  } else {
   const templateVars = {
     email : ""
   };
-  req.session = null;
   res.render('urls_register', templateVars);
+  }
 });
 
 app.post("/register", (req, res) => {
   const inputEmail = req.body.email;
   const inputPassword = req.body.password;
+  const templateVars = {
+    email: "",
+    msg: ""
+  };
   if (!inputEmail || !inputPassword) {
-    res.status(400).send("Empty Input. Please fill both fields.");
+    templateVars.msg = "Empty Input. Please fill both fields.";
+    res.render("urls_err", templateVars);
     return;
   }
 
@@ -204,14 +269,13 @@ app.post("/register", (req, res) => {
     users[userId] = {
       id: userId,
       email: inputEmail,
-      // password: inputPassword
       password: bcrypt.hashSync(inputPassword,salt)
     };
-    console.log(users);
     req.session.user_id = userId;
     res.redirect('urls');
   } else {
-    res.status(400).send("Email already in use");
+    templateVars.msg = "Email already registered. Please try again";
+    res.render("urls_err", templateVars);
   }
   
 });
