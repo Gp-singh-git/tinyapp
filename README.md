@@ -4,11 +4,11 @@
 
 -It's a secure app, making use of bcrypt to store user passwords, and also makes use of cookie-session for safe handling of user cookies. 
 
--Useful, fast, reliable was to shorten urls of long named websites which are no longer needed to be used.
+-Useful, fast, reliable to shorten urls of long named websites which are no longer needed to be used.
 
 # Test user information
 
-*To test the working of app, use following information:*
+*To test the working of app, you can use the following information:*
 
   Username: user1@gmail.com     Password: p12345
   Username: user2@gmail.com     Password: p67890
